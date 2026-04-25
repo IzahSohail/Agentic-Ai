@@ -18,6 +18,10 @@ class ChoiceStore:
     def get_choices(self) -> list[str]:
         return self.choices
 
+    def reset_choices(self) -> list[str]:
+        self.choices = ["Yes", "No"]
+        return self.choices
+
     def spin(self) -> str:
         return random.choice(self.choices)
 
@@ -125,6 +129,12 @@ PAGE = """
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       color: #03101f;
     }
+    .reset-btn {
+      margin-bottom: 10px;
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
     .spin-btn {
       background: #f8fafc;
       color: #08111d;
@@ -192,6 +202,7 @@ PAGE = """
       <p>Add up to 5 choices, save them, then spin the wheel.</p>
       <div class="inputs" id="inputs"></div>
       <button class="save-btn" id="saveButton">Save Choices</button>
+      <button class="reset-btn" id="resetButton">Reset</button>
       <button class="spin-btn" id="spinButton">Spin Wheel</button>
     </section>
     <section class="panel wheel-wrap">
@@ -219,6 +230,7 @@ PAGE = """
     const inputsContainer = document.getElementById("inputs");
     const resultNode = document.getElementById("result");
     const saveButton = document.getElementById("saveButton");
+    const resetButton = document.getElementById("resetButton");
     const spinButton = document.getElementById("spinButton");
 
     function normalizedChoices(values) {
@@ -347,6 +359,7 @@ PAGE = """
           state.spinning = false;
           spinButton.disabled = false;
           saveButton.disabled = false;
+          resetButton.disabled = false;
           resultNode.textContent = getSegmentAtPointer(state.rotation).label;
           drawWheel();
         }
@@ -362,6 +375,7 @@ PAGE = """
       state.spinning = true;
       spinButton.disabled = true;
       saveButton.disabled = true;
+      resetButton.disabled = true;
       resultNode.textContent = "Spinning...";
 
       const response = await fetch("/api/spin", { method: "POST" });
@@ -384,7 +398,17 @@ PAGE = """
       animateSpin(targetRotation);
     }
 
+    async function resetChoices() {
+      const response = await fetch("/api/reset", { method: "POST" });
+      const data = await response.json();
+      state.choices = normalizedChoices(data.choices || []);
+      renderInputs();
+      drawWheel();
+      resultNode.textContent = "-";
+    }
+
     saveButton.addEventListener("click", saveChoices);
+    resetButton.addEventListener("click", resetChoices);
     spinButton.addEventListener("click", spinWheel);
     loadChoices();
   </script>
@@ -416,6 +440,12 @@ def update_choices():
 @app.post("/api/spin")
 def spin():
     return jsonify({"winner": store.spin()})
+
+
+@app.post("/api/reset")
+def reset_choices():
+    choices = store.reset_choices()
+    return jsonify({"choices": choices})
 
 
 def main() -> None:
