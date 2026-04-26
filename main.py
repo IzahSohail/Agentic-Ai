@@ -22,7 +22,7 @@ class ChoiceStore:
         return random.choice(self.choices)
 
     def reset(self) -> list[str]:
-        self.choices = ["Yes", "No"]
+        self.choices = []
         return self.choices
 
 
@@ -238,12 +238,14 @@ PAGE = """
     const resetButton = document.getElementById("resetButton");
 
     function normalizedChoices(values) {
-      const cleaned = values.map((value) => value.trim()).filter(Boolean).slice(0, 5);
-      return cleaned.length ? cleaned : ["Yes", "No"];
+      return values.map((value) => value.trim()).filter(Boolean).slice(0, 5);
     }
 
     function getWheelSegments() {
-      const choices = state.choices.length ? state.choices : ["Yes", "No"];
+      const choices = state.choices;
+      if (!choices.length) {
+        return [];
+      }
       const minSegments = 12;
       const repeatCount = Math.max(1, Math.ceil(minSegments / choices.length));
       const segments = [];
@@ -283,13 +285,33 @@ PAGE = """
       const count = segments.length;
       const center = canvas.width / 2;
       const radius = 250;
-      const slice = fullTurn / count;
-      const fontSize = count >= 12 ? 18 : 24;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       ctx.translate(center, center);
+
+      if (!count) {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e3a5f";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 2, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(248, 250, 252, 0.9)";
+        ctx.lineWidth = 8;
+        ctx.stroke();
+        ctx.fillStyle = "#a5b4cc";
+        ctx.font = "bold 22px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("No choices", 0, 0);
+        ctx.restore();
+        return;
+      }
+
       ctx.rotate(state.rotation);
+      const slice = fullTurn / count;
+      const fontSize = count >= 12 ? 18 : 24;
 
       for (let i = 0; i < count; i += 1) {
         const start = startAngle + i * slice;
@@ -373,7 +395,7 @@ PAGE = """
     }
 
     async function spinWheel() {
-      if (state.spinning) {
+      if (state.spinning || !state.choices.length) {
         return;
       }
       state.spinning = true;
