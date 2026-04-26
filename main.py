@@ -21,6 +21,10 @@ class ChoiceStore:
     def spin(self) -> str:
         return random.choice(self.choices)
 
+    def reset(self) -> list[str]:
+        self.choices = ["Yes", "No"]
+        return self.choices
+
 
 app = Flask(__name__)
 store = ChoiceStore()
@@ -129,6 +133,16 @@ PAGE = """
       background: #f8fafc;
       color: #08111d;
     }
+    .reset-btn {
+      margin-top: 10px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .reset-btn:hover {
+      color: var(--text);
+      border-color: rgba(148, 163, 184, 0.6);
+    }
     .wheel-wrap {
       position: relative;
       display: flex;
@@ -193,6 +207,7 @@ PAGE = """
       <div class="inputs" id="inputs"></div>
       <button class="save-btn" id="saveButton">Save Choices</button>
       <button class="spin-btn" id="spinButton">Spin Wheel</button>
+      <button class="reset-btn" id="resetButton">Reset to Defaults</button>
     </section>
     <section class="panel wheel-wrap">
       <div class="pointer"></div>
@@ -220,6 +235,7 @@ PAGE = """
     const resultNode = document.getElementById("result");
     const saveButton = document.getElementById("saveButton");
     const spinButton = document.getElementById("spinButton");
+    const resetButton = document.getElementById("resetButton");
 
     function normalizedChoices(values) {
       const cleaned = values.map((value) => value.trim()).filter(Boolean).slice(0, 5);
@@ -347,6 +363,7 @@ PAGE = """
           state.spinning = false;
           spinButton.disabled = false;
           saveButton.disabled = false;
+          resetButton.disabled = false;
           resultNode.textContent = getSegmentAtPointer(state.rotation).label;
           drawWheel();
         }
@@ -362,6 +379,7 @@ PAGE = """
       state.spinning = true;
       spinButton.disabled = true;
       saveButton.disabled = true;
+      resetButton.disabled = true;
       resultNode.textContent = "Spinning...";
 
       const response = await fetch("/api/spin", { method: "POST" });
@@ -386,6 +404,22 @@ PAGE = """
 
     saveButton.addEventListener("click", saveChoices);
     spinButton.addEventListener("click", spinWheel);
+
+    async function resetChoices() {
+      resetButton.disabled = true;
+      try {
+        const response = await fetch("/api/reset", { method: "POST" });
+        const data = await response.json();
+        state.choices = normalizedChoices(data.choices || []);
+        renderInputs();
+        drawWheel();
+        resultNode.textContent = "-";
+      } finally {
+        resetButton.disabled = false;
+      }
+    }
+
+    resetButton.addEventListener("click", resetChoices);
     loadChoices();
   </script>
 </body>
@@ -416,6 +450,11 @@ def update_choices():
 @app.post("/api/spin")
 def spin():
     return jsonify({"winner": store.spin()})
+
+
+@app.post("/api/reset")
+def reset():
+    return jsonify({"choices": store.reset()})
 
 
 def main() -> None:
