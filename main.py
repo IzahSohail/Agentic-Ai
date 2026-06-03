@@ -3,16 +3,16 @@ from dataclasses import dataclass, field
 
 from flask import Flask, jsonify, render_template_string, request
 
+DEFAULT_CHOICES = ["Yes", "No"]
+
 
 @dataclass
 class ChoiceStore:
-    choices: list[str] = field(default_factory=lambda: ["Yes", "No"])
+    choices: list[str] = field(default_factory=lambda: DEFAULT_CHOICES.copy())
 
     def set_choices(self, values: list[str]) -> list[str]:
-        cleaned = [value.strip() for value in values if value.strip()]
-        if not cleaned:
-            cleaned = ["Yes", "No"]
-        self.choices = cleaned[:5]
+        _ = values
+        self.choices = DEFAULT_CHOICES.copy()
         return self.choices
 
     def get_choices(self) -> list[str]:
@@ -222,19 +222,12 @@ PAGE = """
     const spinButton = document.getElementById("spinButton");
 
     function normalizedChoices(values) {
-      const cleaned = values.map((value) => value.trim()).filter(Boolean).slice(0, 5);
-      return cleaned.length ? cleaned : ["Yes", "No"];
+      return ["Yes", "No"];
     }
 
     function getWheelSegments() {
-      const choices = state.choices.length ? state.choices : ["Yes", "No"];
-      const minSegments = 12;
-      const repeatCount = Math.max(1, Math.ceil(minSegments / choices.length));
-      const segments = [];
-      for (let i = 0; i < repeatCount; i += 1) {
-        choices.forEach((choice) => segments.push(choice));
-      }
-      return segments;
+      const totalSegments = 8;
+      return Array.from({ length: totalSegments }, (_, index) => (index % 2 === 0 ? "Yes" : "No"));
     }
 
     function getSegmentAtPointer(rotation = state.rotation) {
@@ -400,7 +393,7 @@ def index() -> str:
 
 @app.get("/api/choices")
 def get_choices():
-    return jsonify({"choices": store.get_choices()})
+    return jsonify({"choices": store.set_choices([])})
 
 
 @app.post("/api/choices")
